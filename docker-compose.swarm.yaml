@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - food-delivery-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+          - node.role == manager
+
+  backend:
+    image: khalil007/food-delivery-backend:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/food-delivery
+      - JWT_SECRET=votre_secret_jwt_ici
+      - PORT=5000
+    depends_on:
+      - mongodb
+    networks:
+      - food-delivery-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+  frontend:
+    image: khalil007/food-delivery-frontend:latest
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - food-delivery-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  food-delivery-net:
+    driver: overlay
+    name: food-delivery-net
